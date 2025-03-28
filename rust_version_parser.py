@@ -2,20 +2,19 @@
 
 # This script is used to ingest rust release information into an sqlite database for later querying.
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
+from tqdm.contrib.concurrent import process_map
 from typing import List, Dict, Optional, Tuple
 import argparse
 import helpers.sqlite as sq
 import os
+import re
 import requests
 import sqlite3
 import structlog
 import tomllib as toml
-import re
-from tqdm import tqdm
-from tqdm.contrib.concurrent import process_map
-from concurrent.futures import ThreadPoolExecutor
 
 loglevel = os.environ.get('LOGLEVEL', 'INFO').upper()
 structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(loglevel))
@@ -76,9 +75,9 @@ class RustVersion:
     profiles: Optional[Dict[str, List[str]]] = None
     renames: Optional[Dict[str, str]] = None
     artefacts: Optional[List[Artefact]] = None
-    is_latest_stable: bool = False
-    is_latest_beta: bool = False
-    is_nightly: bool = False
+    latest_stable: bool = False
+    latest_beta: bool = False
+    latest_nightly: bool = False
     manifest: Optional[str] = None
 
 
@@ -232,7 +231,7 @@ def parse_manifest(manifest: str) -> RustVersion:
 
 def update_rust_version_flags(rusts: List[RustVersion], stable: str, beta: str, nightly: str):
     """
-    Updates the `is_latest_stable`, `is_latest_beta`, and `is_latest_nightly` flags for the given Rust versions.
+    Updates the `latest_stable`, `latest_beta`, and `latest_nightly` flags for the given Rust versions.
 
     Args:
         rusts (List[RustVersion]): A list of RustVersion objects.
@@ -246,9 +245,9 @@ def update_rust_version_flags(rusts: List[RustVersion], stable: str, beta: str, 
     nightly = parse_manifest(nightly).version
 
     for rust in rusts:
-        rust.is_latest_stable = rust.version == stable
-        rust.is_latest_beta = rust.version == beta
-        rust.is_nightly = rust.version == nightly
+        rust.latest_stable = rust.version == stable
+        rust.latest_beta = rust.version == beta
+        rust.latest_nightly = rust.version == nightly
 
 
 def main():

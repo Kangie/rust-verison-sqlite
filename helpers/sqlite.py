@@ -107,9 +107,9 @@ def init_tables(database):
             'columns': [
                 {'name': 'version', 'type': 'TEXT', 'primary_key': True},
                 {'name': 'release_date', 'type': 'INTEGER'},
-                {'name': 'is_latest_stable', 'type': 'INTEGER', 'default': 0},
-                {'name': 'is_latest_beta', 'type': 'INTEGER', 'default': 0},
-                {'name': 'is_nightly', 'type': 'INTEGER', 'default': 0},
+                {'name': 'latest_stable', 'type': 'INTEGER', 'default': 0},
+                {'name': 'latest_beta', 'type': 'INTEGER', 'default': 0},
+                {'name': 'latest_nightly', 'type': 'INTEGER', 'default': 0},
             ]
         },
         {
@@ -239,8 +239,8 @@ def insert_rust_version(database: str, rust: RustVersion) -> bool:
         database,
         generate_insert(
             'rust_versions',
-            ('version', 'release_date', 'is_latest_stable', 'is_latest_beta', 'is_nightly'),
-            [(rust.version, rust.release_date, str(rust.is_latest_stable), str(rust.is_latest_beta), str(rust.is_nightly))]
+            ('version', 'release_date', 'latest_stable', 'latest_beta', 'latest_nightly'),
+            [(rust.version, rust.release_date, str(int(rust.latest_stable)), str(int(rust.latest_beta)), str(int(rust.latest_nightly)))]
         )
     )
 
