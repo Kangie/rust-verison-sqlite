@@ -120,9 +120,9 @@ def init_tables(database):
                 {'name': 'version', 'type': 'TEXT'},
                 {'name': 'rust_version', 'type': 'TEXT'},
                 {'name': 'git_commit', 'type': 'TEXT'},
-                {'name': 'is_profile_complete', 'type': 'INTEGER', 'default': 0},
-                {'name': 'is_profile_default', 'type': 'INTEGER', 'default': 0},
-                {'name': 'is_profile_minimal', 'type': 'INTEGER', 'default': 0},
+                {'name': 'profile_complete', 'type': 'INTEGER', 'default': 0},
+                {'name': 'profile_default', 'type': 'INTEGER', 'default': 0},
+                {'name': 'profile_minimal', 'type': 'INTEGER', 'default': 0},
             ],
             'constraints': {
                 'foreign_key': {
@@ -249,9 +249,9 @@ def insert_rust_version(database: str, rust: RustVersion) -> bool:
         database,
         generate_insert(
             'components',
-            ('name', 'version', 'rust_version', 'git_commit'),
+            ('name', 'version', 'rust_version', 'git_commit', 'profile_complete', 'profile_default', 'profile_minimal'),
             [(component.name, component.version,
-              component.rust_version, component.git_commit) for component in rust.components]
+              component.rust_version, component.git_commit, '0', '0', '0') for component in rust.components]
         )
     )
 
@@ -296,7 +296,7 @@ def insert_rust_version(database: str, rust: RustVersion) -> bool:
 
         for profile, components in rust.profiles.items():
             query = f'''
-            UPDATE components SET is_profile_{profile} = 1
+            UPDATE components SET profile_{profile} = 1
             WHERE name IN ({",".join(f"\"{component}\"" for component in components)})
             AND rust_version = "{rust.version}";
             '''

@@ -20,7 +20,7 @@ pub async fn hello(tera: Data<Tera>, db: web::Data::<Pool>) -> impl Responder {
 }
 
 #[get("/info/{version}")]
-pub async fn versioninfo(tera: Data<Tera>, path: web::Path<(String)>,  db: web::Data<Pool>) -> impl Responder {
+pub async fn versioninfo(tera: Data<Tera>, path: web::Path<String>,  db: web::Data<Pool>) -> impl Responder {
     let mut ctx = Context::new();
 
     let rustversion = db::execute(&db, Queries::GetVersionInfo, Some(path.to_string()))
@@ -44,6 +44,17 @@ pub async fn allversions(tera: Data<Tera>, db: web::Data<Pool>) -> impl Responde
     HttpResponse::Ok().body(tera.render("allversions.tera", &ctx).unwrap())
 }
 
+#[get("api/v1/version/{version}")]
+pub async fn versioninfoapi(path: web::Path<String>, db: web::Data<Pool>) -> impl Responder {
+    let rustversion = db::execute(&db, Queries::GetVersionInfo, Some(path.to_string()))
+        .await
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap();
+    HttpResponse::Ok().json(rustversion)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
 
@@ -61,6 +72,7 @@ async fn main() -> std::io::Result<()> {
             .service(hello)
             .service(versioninfo)
             .service(allversions)
+            .service(versioninfoapi)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

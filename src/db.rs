@@ -70,8 +70,8 @@ fn get_named_channel_rows(mut statement: Statement) -> RustVersionsAggResult {
 fn get_rust_components(conn: &Connection, version: &str) -> ComponentAggResult {
     let stmt = conn.prepare(
         "SELECT
-            components.name, components.version, components.git_commit, components.is_profile_complete,
-            components.is_profile_default, components.is_profile_minimal, targets.name, targets.url,
+            components.name, components.version, components.git_commit, components.profile_complete,
+            components.profile_default, components.profile_minimal, targets.name, targets.url,
             targets.hash
         FROM
             components
@@ -89,37 +89,49 @@ fn get_rust_components(conn: &Connection, version: &str) -> ComponentAggResult {
 fn get_component_rows(mut statement: Statement, version: &str) -> ComponentAggResult {
     let mut components_map: std::collections::HashMap<String, Component> = std::collections::HashMap::new();
 
-    statement.query_map([version], |row| {
-        let name: String = row.get(0)?;
-        let target = ComponentTarget {
-            name: row.get(6)?,
-            url: row.get(7)?,
-            hash: row.get(8)?,
+    let _rows: Vec<_> = statement.query_map([version], |row| {
+        let name: String = row.get("name")?;
+        let target = if let (Ok(name), Ok(url), Ok(hash)) = (
+            row.get::<_, Option<String>>("targets.name"),
+            row.get::<_, Option<String>>("targets.url"),
+            row.get::<_, Option<String>>("targets.hash"),
+        ) {
+            Some(ComponentTarget {
+            name: name.unwrap_or_default(),
+            url: url.unwrap_or_default(),
+            hash: hash.unwrap_or_default(),
+            })
+        } else {
+            None
         };
 
         if let Some(component) = components_map.get_mut(&name) {
+            if let Some(target) = target {
             if let Some(targets) = &mut component.target {
                 targets.push(target);
             } else {
                 component.target = Some(vec![target]);
             }
+            }
         } else {
             components_map.insert(
-                name.clone(),
-                Component {
-                    name,
-                    version: row.get(1)?,
-                    git_commit: row.get(2)?,
-                    profile_complete: row.get(3)?,
-                    profile_default: row.get(4)?,
-                    profile_minimal: row.get(5)?,
-                    target: Some(vec![target]),
-                },
+            name.clone(),
+            Component {
+                name: row.get("name")?,
+                version: row.get("version")?,
+                git_commit: row.get("git_commit")?,
+                profile_complete: row.get("profile_complete")?,
+                profile_default: row.get("profile_default")?,
+                profile_minimal: row.get("profile_minimal")?,
+                target: target.map(|t| vec![t]),
+            },
             );
         }
 
         Ok(())
-    })?;
+    })?.collect::<Result<_, rusqlite::Error>>()?;
+
+    print!("{:?}", components_map);
 
     Ok(components_map.into_values().collect())
 }
