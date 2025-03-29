@@ -1,3 +1,4 @@
+use actix_files::{Files, NamedFile};
 use actix_web::{middleware, web, get, App, HttpResponse, HttpServer, Responder, web::Data};
 use tera::{Context, Tera};
 use env_logger::Env;
@@ -29,7 +30,6 @@ pub async fn versioninfo(tera: Data<Tera>, path: web::Path<String>,  db: web::Da
         .into_iter()
         .next()
         .unwrap();
-    print!("{:?}", rustversion);
     ctx.insert("version", &rustversion);
 
     HttpResponse::Ok().body(tera.render("versioninfo.tera", &ctx).unwrap())
@@ -73,6 +73,7 @@ async fn main() -> std::io::Result<()> {
             .service(versioninfo)
             .service(allversions)
             .service(versioninfoapi)
+            .service(Files::new("/static", "./static")) // No need to enable listing
     })
     .bind(("127.0.0.1", 8080))?
     .run()

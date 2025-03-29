@@ -2,27 +2,10 @@
 <html>
 <head>
     <title>Rust Versions</title>
+    <link rel="stylesheet" href="/static/style.css">
     <style>
         body {
             display: flex;
-        }
-
-        a {
-            text-decoration: none;
-            color: #007bff; /* Blue, for links */
-        }
-
-        .sidebar {
-            width: 10%; /* Adjust width as needed */
-            background-color: #f0f0f0; /* Light grey background */
-            padding: 10px;
-            height: 100vh; /* Make it full height */
-            overflow-y: auto; /* Allow scrolling if many versions */
-        }
-
-        .content {
-            flex-grow: 1; /* Allow content to take remaining space */
-            padding: 20px;
         }
     </style>
 </head>
@@ -44,13 +27,13 @@
 
         {% for channel in named_channels %}
             {% if channel.latest_stable %}
-                <p>{{ channel.version }}: ({{ channel.release_date }}) - Latest Stable</p>
+                <p>Latest Stable: <a href=http://127.0.0.1:8080/info/{{ channel.version }}>{{ channel.version }}</a> ({{ channel.release_date }})</p>
             {% endif %}
             {% if channel.latest_beta %}
-                <p>{{ channel.version }}: ({{ channel.release_date }}) - Latest Beta</p>
+                <p>Latest Beta:<a href=http://127.0.0.1:8080/info/{{ channel.version }}>{{ channel.version }}</a> ({{ channel.release_date }})</p>
             {% endif %}
             {% if channel.latest_nightly %}
-                <p>{{ channel.version }}: ({{ channel.release_date }}) - Latest Nightly</p>
+                <p>Latest Nightly: <a href=http://127.0.0.1:8080/info/{{ channel.version }}>{{ channel.version }}</a> ({{ channel.release_date }})</p>
             {% endif %}
         {% endfor %}
     </div>

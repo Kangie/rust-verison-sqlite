@@ -2,45 +2,7 @@
 <html>
 <head>
     <title>Rust Versions</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            margin: 20px;
-        }
-
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-
-        li {
-            margin-bottom: 8px;
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-        }
-
-        a {
-            text-decoration: none;
-            color: #007bff; /* Blue, for links */
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        .version-info {
-            font-weight: bold;
-        }
-
-        .version-date {
-          font-style: italic;
-          color: #666;
-        }
-
-        .latest-label{
-          color: green;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 

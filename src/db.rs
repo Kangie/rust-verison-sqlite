@@ -131,8 +131,6 @@ fn get_component_rows(mut statement: Statement, version: &str) -> ComponentAggRe
         Ok(())
     })?.collect::<Result<_, rusqlite::Error>>()?;
 
-    print!("{:?}", components_map);
-
     Ok(components_map.into_values().collect())
 }
 
