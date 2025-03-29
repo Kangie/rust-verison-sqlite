@@ -53,11 +53,13 @@
       <div class="component-details">
         <h3>{{component.name}} Target Details</h3>
         <ul>
-          {% for target in component.target %}
+            {% for target in component.target %}
+            {% if target.url %}
             <li>
               <strong>{{target.name}}</strong>: <a href="{{target.url}}">{{target.url}}</a> (Hash: {{target.hash}})
             </li>
-          {% endfor %}
+            {% endif %}
+            {% endfor %}
         </ul>
       </div>
       {% endif %}
