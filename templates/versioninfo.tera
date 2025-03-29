@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ version.version }} - Rust Release Details</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+        }
+
+        h1, h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .latest-stable {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .latest-beta {
+            color: #f39c12;
+            font-weight: bold;
+        }
+
+        .latest-nightly {
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        .component-details {
+          margin-top: 20px;
+        }
+
+        .component-details h3 {
+          color: #34495e;
+          border-bottom: 1px solid #ddd;
+          padding-bottom: 5px;
+        }
+
+        .component-details ul {
+          list-style-type: disc;
+          padding-left: 20px;
+        }
+
+        .component-details li {
+          margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>{{ version.version }}</h1>
+    <p>Released on: {{ version.release_date }}</p>
+
+    {% if version.latest_stable %}
+        <p class="latest-stable">{{ version.version }} is the latest stable channel release.</p>
+    {% endif %}
+    {% if version.latest_beta %}
+        <p class="latest-beta">{{ version.version }} is the latest beta channel release.</p>
+    {% endif %}
+    {% if version.latest_nightly %}
+        <p class="latest-nightly">{{ version.version }} is the latest nightly channel release.</p>
+    {% endif %}
+
+    <h2>Components</h2>
+
+    <table>
+        <tr>
+            <th>Component</th>
+            <th>Version</th>
+            <th>Git Commit</th>
+            <th>Profile Complete</th>
+            <th>Profile Default</th>
+            <th>Profile Minimal</th>
+        </tr>
+        {% for component in version.components %}
+            <tr>
+                <td>{{ component.name }}</td>
+                <td>{{ component.version }}</td>
+                <td>{{ component.git_commit }}</td>
+                <td>{{ component.profile_complete }}</td>
+                <td>{{ component.profile_default }}</td>
+                <td>{{ component.profile_minimal }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    {% for component in version.components %}
+      {% if component.target %}
+      <div class="component-details">
+        <h3>{{component.name}} Target Details</h3>
+        <ul>
+          {% for target in component.target %}
+            <li>
+              <strong>{{target.name}}</strong>: <a href="{{target.url}}">{{target.url}}</a> (Hash: {{target.hash}})
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    {% endfor %}
+
+</body>
+</html>

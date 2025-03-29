@@ -1,2 +1,7 @@
 rust_versions.sqlite3
 __pycache__/
+
+
+# Added by cargo
+
+/target
