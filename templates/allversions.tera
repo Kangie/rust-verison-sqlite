@@ -11,7 +11,7 @@
     <ul>
         {% for version in versions %}
             <li>
-                <span class="version-info"><a href="http://127.0.0.1:8080/info/{{ version.version }}">{{ version.version }}</a></span>
+                <span class="version-info"><a href="/info/{{ version.version }}">{{ version.version }}</a></span>
                 <span class="version-date">({{ version.release_date }})</span>
                 {% if version.latest_stable %} <span class="latest-label">(latest stable)</span>{% endif %}
                 {% if version.latest_beta %} <span class="latest-label">(latest beta)</span>{% endif %}

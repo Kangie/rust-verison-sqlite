@@ -15,7 +15,7 @@
         <h2>Versions</h2>
         <ul>
             {% for version in versions %}
-                <li><a href=http://127.0.0.1:8080/info/{{ version.version }}>{{ version.version }}</a> {{ version.release_date }}</li>
+                <li><a href=/info/{{ version.version }}>{{ version.version }}</a> {{ version.release_date }}</li>
             {% endfor %}
         </ul>
     </div>
@@ -27,13 +27,13 @@
 
         {% for channel in named_channels %}
             {% if channel.latest_stable %}
-                <p>Latest Stable: <a href=http://127.0.0.1:8080/info/{{ channel.version }}>{{ channel.version }}</a> ({{ channel.release_date }})</p>
+                <p>Latest Stable: <a href=/info/{{ channel.version }}>{{ channel.version }}</a> ({{ channel.release_date }})</p>
             {% endif %}
             {% if channel.latest_beta %}
-                <p>Latest Beta:<a href=http://127.0.0.1:8080/info/{{ channel.version }}>{{ channel.version }}</a> ({{ channel.release_date }})</p>
+                <p>Latest Beta:<a href=/info/{{ channel.version }}>{{ channel.version }}</a> ({{ channel.release_date }})</p>
             {% endif %}
             {% if channel.latest_nightly %}
-                <p>Latest Nightly: <a href=http://127.0.0.1:8080/info/{{ channel.version }}>{{ channel.version }}</a> ({{ channel.release_date }})</p>
+                <p>Latest Nightly: <a href=/info/{{ channel.version }}>{{ channel.version }}</a> ({{ channel.release_date }})</p>
             {% endif %}
         {% endfor %}
     </div>
