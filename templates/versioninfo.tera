@@ -30,14 +30,20 @@
             <th>Profile Default</th>
             <th>Profile Minimal</th>
         </tr>
-        {% for component in version.components %}
+        {% for component in version.components | sort(attribute="name") %}
             <tr>
                 <td>{{ component.name }}</td>
                 <td>{{ component.version }}</td>
                 <td>{{ component.git_commit }}</td>
-                <td>{{ component.profile_complete }}</td>
-                <td>{{ component.profile_default }}</td>
-                <td>{{ component.profile_minimal }}</td>
+                <td style="background-color: {% if component.profile_complete %}green{% endif %};">
+                    {{ component.profile_complete }}
+                </td>
+                <td style="background-color: {% if component.profile_default %}green{% endif %};">
+                    {{ component.profile_default }}
+                </td>
+                <td style="background-color: {% if component.profile_minimal %}green{% endif %};">
+                    {{ component.profile_minimal }}
+                </td>
             </tr>
         {% endfor %}
     </table>
