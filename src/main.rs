@@ -1,7 +1,7 @@
-use actix_files::{Files};
-use actix_web::{middleware, web, get, App, HttpResponse, HttpServer, Responder, web::Data};
-use tera::{Context, Tera};
+use actix_files::Files;
+use actix_web::{App, HttpResponse, HttpServer, Responder, get, middleware, web, web::Data};
 use env_logger::Env;
+use tera::{Context, Tera};
 
 mod db;
 use db::{Pool, Queries};
@@ -9,19 +9,27 @@ use db::{Pool, Queries};
 pub mod models;
 
 #[get("/")]
-pub async fn hello(tera: Data<Tera>, db: web::Data::<Pool>) -> impl Responder {
+pub async fn hello(tera: Data<Tera>, db: web::Data<Pool>) -> impl Responder {
     let mut ctx = Context::new();
 
-    let versions = db::execute(&db, Queries::GetAllVersions, None).await.unwrap();
+    let versions = db::execute(&db, Queries::GetAllVersions, None)
+        .await
+        .unwrap();
     ctx.insert("versions", &versions);
-    let named_channels = db::execute(&db, Queries::GetNamedChannels, None).await.unwrap();
+    let named_channels = db::execute(&db, Queries::GetNamedChannels, None)
+        .await
+        .unwrap();
     ctx.insert("named_channels", &named_channels);
 
     HttpResponse::Ok().body(tera.render("index.tera", &ctx).unwrap())
 }
 
 #[get("/info/{version}")]
-pub async fn versioninfo(tera: Data<Tera>, path: web::Path<String>,  db: web::Data<Pool>) -> impl Responder {
+pub async fn versioninfo(
+    tera: Data<Tera>,
+    path: web::Path<String>,
+    db: web::Data<Pool>,
+) -> impl Responder {
     let mut ctx = Context::new();
 
     let rustversion = db::execute(&db, Queries::GetVersionInfo, Some(path.to_string()))
@@ -39,7 +47,9 @@ pub async fn versioninfo(tera: Data<Tera>, path: web::Path<String>,  db: web::Da
 pub async fn allversions(tera: Data<Tera>, db: web::Data<Pool>) -> impl Responder {
     let mut ctx = Context::new();
 
-    let versions = db::execute(&db, Queries::GetAllVersions, None).await.unwrap();
+    let versions = db::execute(&db, Queries::GetAllVersions, None)
+        .await
+        .unwrap();
     ctx.insert("versions", &versions);
     HttpResponse::Ok().body(tera.render("allversions.tera", &ctx).unwrap())
 }
@@ -57,7 +67,6 @@ pub async fn versioninfoapi(path: web::Path<String>, db: web::Data<Pool>) -> imp
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-
     env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
     let tera = Data::new(Tera::new("./templates/*").unwrap());
 
