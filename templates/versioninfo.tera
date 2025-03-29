@@ -25,7 +25,6 @@
         <tr>
             <th>Component</th>
             <th>Version</th>
-            <th>Git Commit</th>
             <th>Profile Complete</th>
             <th>Profile Default</th>
             <th>Profile Minimal</th>
