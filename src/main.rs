@@ -1,4 +1,4 @@
-use actix_files::{Files, NamedFile};
+use actix_files::{Files};
 use actix_web::{middleware, web, get, App, HttpResponse, HttpServer, Responder, web::Data};
 use tera::{Context, Tera};
 use env_logger::Env;

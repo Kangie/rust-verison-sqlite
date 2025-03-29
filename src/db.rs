@@ -1,7 +1,7 @@
 use actix_web::{error, web, Error};
 use rusqlite::Statement;
 
-use crate::models::{Component, ComponentTarget, RustVersion};
+use crate::models::{Artefact, ArtefactType, Component, ComponentTarget, RustVersion};
 
 pub type Pool = r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>;
 pub type Connection = r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
@@ -214,6 +214,13 @@ fn get_version_info(conn: &Connection, version: Option<String>) -> RustVersionsA
         version.components = get_rust_components(conn, &version.version)?;
     }
 
+    let version_artefacts = get_rust_version_artefacts(conn, &query_version)?;
+    if !version_artefacts.is_empty() {
+        if let Some(version) = version_info.first_mut() {
+            version.artefacts = Some(version_artefacts);
+        }
+    }
+
     Ok(version_info)
 }
 
@@ -230,6 +237,31 @@ fn get_version_info_rows(mut statement: Statement, version: &String) -> RustVers
                 profiles: None,
                 renames: None,
                 artefacts: None,
+            })
+        })
+        .and_then(Iterator::collect)
+}
+
+fn get_rust_version_artefacts(conn: &Connection, version: &str) -> Result<Vec<Artefact>, rusqlite::Error> {
+    let stmt = conn.prepare(
+        "SELECT
+            artefacts.type, artefacts.url, artefacts.hash
+        FROM
+            artefacts
+        WHERE
+            artefacts.rust_version = ?1",
+    )?;
+
+    get_rust_version_artefact_rows(stmt, version)
+}
+
+fn get_rust_version_artefact_rows(mut statement: Statement, version: &str) -> Result<Vec<Artefact>, rusqlite::Error> {
+    statement
+        .query_map([version], |row| {
+            Ok(Artefact {
+                artefact_type: ArtefactType::try_from(row.get::<_, i32>("type")?).map_err(|_| rusqlite::Error::InvalidQuery)?,
+                hash: row.get("hash")?,
+                url: row.get("url")?,
             })
         })
         .and_then(Iterator::collect)

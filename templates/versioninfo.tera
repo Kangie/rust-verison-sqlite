@@ -63,5 +63,22 @@
       {% endif %}
     {% endfor %}
 
+    {% if version.artefacts %}
+    <h2>Artefacts</h2>
+    <table>
+        <tr>
+        <th>Type</th>
+        <th>URL</th>
+        <th>SHA256 Hash</th>
+        {% for artefact in version.artefacts | sort(attribute="artefact_type") %}
+            <tr>
+                <td>{{ artefact.artefact_type }}</td>
+                <td><a href="{{ artefact.url }}">{{ artefact.url }}</a></td>
+                <td>{{ artefact.hash }}</td>
+            </tr>
+        {% endfor %}
+        </tr>
+    </table>
+    {% endif %}
 </body>
 </html>
