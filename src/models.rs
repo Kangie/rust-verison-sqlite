@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub enum ArtefactType {
     InstallerMSI = 1,
     InstallerPkg = 2,
-    SourceCode = 3
+    SourceCode = 3,
 }
 
 impl TryFrom<i32> for ArtefactType {
@@ -33,7 +33,7 @@ pub struct Artefact {
     pub hash: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone,)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComponentTarget {
     pub name: String,
     pub url: String,

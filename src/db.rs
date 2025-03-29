@@ -1,4 +1,4 @@
-use actix_web::{error, web, Error};
+use actix_web::{Error, error, web};
 use rusqlite::Statement;
 
 use crate::models::{Artefact, ArtefactType, Component, ComponentTarget, RustVersion};
@@ -15,19 +15,21 @@ pub enum Queries {
     GetVersionInfo,
 }
 
-pub async fn execute(pool: &Pool, query: Queries, param: Option<String>) -> Result<Vec<RustVersion>, Error> {
+pub async fn execute(
+    pool: &Pool,
+    query: Queries,
+    param: Option<String>,
+) -> Result<Vec<RustVersion>, Error> {
     let pool = pool.clone();
 
     let conn = web::block(move || pool.get())
         .await?
         .map_err(error::ErrorInternalServerError)?;
 
-    web::block(move || {
-        match query {
-            Queries::GetNamedChannels => get_named_channels(&conn),
-            Queries::GetAllVersions => get_all_versions(&conn),
-            Queries::GetVersionInfo => get_version_info(&conn, param),
-        }
+    web::block(move || match query {
+        Queries::GetNamedChannels => get_named_channels(&conn),
+        Queries::GetAllVersions => get_all_versions(&conn),
+        Queries::GetVersionInfo => get_version_info(&conn, param),
     })
     .await?
     .map_err(error::ErrorInternalServerError)
@@ -87,49 +89,52 @@ fn get_rust_components(conn: &Connection, version: &str) -> ComponentAggResult {
 }
 
 fn get_component_rows(mut statement: Statement, version: &str) -> ComponentAggResult {
-    let mut components_map: std::collections::HashMap<String, Component> = std::collections::HashMap::new();
+    let mut components_map: std::collections::HashMap<String, Component> =
+        std::collections::HashMap::new();
 
-    let _rows: Vec<_> = statement.query_map([version], |row| {
-        let name: String = row.get("component_name")?;
-        let target = if let (Ok(name), Ok(url), Ok(hash)) = (
-            row.get::<_, Option<String>>("target_name"),
-            row.get::<_, Option<String>>("url"),
-            row.get::<_, Option<String>>("hash"),
-        ) {
-            Some(ComponentTarget {
-            name: name.unwrap_or_default(),
-            url: url.unwrap_or_default(),
-            hash: hash.unwrap_or_default(),
-            })
-        } else {
-            None
-        };
-
-        if let Some(component) = components_map.get_mut(&name) {
-            if let Some(target) = target {
-            if let Some(targets) = &mut component.target {
-                targets.push(target);
+    let _rows: Vec<_> = statement
+        .query_map([version], |row| {
+            let name: String = row.get("component_name")?;
+            let target = if let (Ok(name), Ok(url), Ok(hash)) = (
+                row.get::<_, Option<String>>("target_name"),
+                row.get::<_, Option<String>>("url"),
+                row.get::<_, Option<String>>("hash"),
+            ) {
+                Some(ComponentTarget {
+                    name: name.unwrap_or_default(),
+                    url: url.unwrap_or_default(),
+                    hash: hash.unwrap_or_default(),
+                })
             } else {
-                component.target = Some(vec![target]);
-            }
-            }
-        } else {
-            components_map.insert(
-            name.clone(),
-            Component {
-                name: row.get("component_name")?,
-                version: row.get("version")?,
-                git_commit: row.get("git_commit")?,
-                profile_complete: row.get("profile_complete")?,
-                profile_default: row.get("profile_default")?,
-                profile_minimal: row.get("profile_minimal")?,
-                target: target.map(|t| vec![t]),
-            },
-            );
-        }
+                None
+            };
 
-        Ok(())
-    })?.collect::<Result<_, rusqlite::Error>>()?;
+            if let Some(component) = components_map.get_mut(&name) {
+                if let Some(target) = target {
+                    if let Some(targets) = &mut component.target {
+                        targets.push(target);
+                    } else {
+                        component.target = Some(vec![target]);
+                    }
+                }
+            } else {
+                components_map.insert(
+                    name.clone(),
+                    Component {
+                        name: row.get("component_name")?,
+                        version: row.get("version")?,
+                        git_commit: row.get("git_commit")?,
+                        profile_complete: row.get("profile_complete")?,
+                        profile_default: row.get("profile_default")?,
+                        profile_minimal: row.get("profile_minimal")?,
+                        target: target.map(|t| vec![t]),
+                    },
+                );
+            }
+
+            Ok(())
+        })?
+        .collect::<Result<_, rusqlite::Error>>()?;
 
     Ok(components_map.into_values().collect())
 }
@@ -175,24 +180,46 @@ fn get_version_info(conn: &Connection, version: Option<String>) -> RustVersionsA
                 .iter()
                 .find(|v| v.latest_stable)
                 .map(|v| v.version.clone())
-                .ok_or_else(|| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "No stable version found")))),
+                .ok_or_else(|| {
+                    rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "No stable version found",
+                    )))
+                }),
             "beta" => versions
                 .iter()
                 .find(|v| v.latest_beta)
                 .map(|v| v.version.clone())
-                .ok_or_else(|| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "No beta version found")))),
+                .ok_or_else(|| {
+                    rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "No beta version found",
+                    )))
+                }),
             "nightly" => versions
                 .iter()
                 .find(|v| v.latest_nightly)
                 .map(|v| v.version.clone())
-                .ok_or_else(|| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "No nightly version found")))),
+                .ok_or_else(|| {
+                    rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "No nightly version found",
+                    )))
+                }),
             _ => versions
                 .iter()
                 .find(|v| v.version == version_str)
                 .map(|v| v.version.clone())
-                .ok_or_else(|| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Version not found")))),
+                .ok_or_else(|| {
+                    rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Version not found",
+                    )))
+                }),
         },
-        Err(e) => Err(rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e)))),
+        Err(e) => Err(rusqlite::Error::ToSqlConversionFailure(Box::new(
+            std::io::Error::new(std::io::ErrorKind::Other, e),
+        ))),
     }?;
 
     let stmt = conn.prepare(
@@ -242,7 +269,10 @@ fn get_version_info_rows(mut statement: Statement, version: &String) -> RustVers
         .and_then(Iterator::collect)
 }
 
-fn get_rust_version_artefacts(conn: &Connection, version: &str) -> Result<Vec<Artefact>, rusqlite::Error> {
+fn get_rust_version_artefacts(
+    conn: &Connection,
+    version: &str,
+) -> Result<Vec<Artefact>, rusqlite::Error> {
     let stmt = conn.prepare(
         "SELECT
             artefacts.type, artefacts.url, artefacts.hash
@@ -255,11 +285,15 @@ fn get_rust_version_artefacts(conn: &Connection, version: &str) -> Result<Vec<Ar
     get_rust_version_artefact_rows(stmt, version)
 }
 
-fn get_rust_version_artefact_rows(mut statement: Statement, version: &str) -> Result<Vec<Artefact>, rusqlite::Error> {
+fn get_rust_version_artefact_rows(
+    mut statement: Statement,
+    version: &str,
+) -> Result<Vec<Artefact>, rusqlite::Error> {
     statement
         .query_map([version], |row| {
             Ok(Artefact {
-                artefact_type: ArtefactType::try_from(row.get::<_, i32>("type")?).map_err(|_| rusqlite::Error::InvalidQuery)?,
+                artefact_type: ArtefactType::try_from(row.get::<_, i32>("type")?)
+                    .map_err(|_| rusqlite::Error::InvalidQuery)?,
                 hash: row.get("hash")?,
                 url: row.get("url")?,
             })
