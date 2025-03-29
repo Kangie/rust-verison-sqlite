@@ -55,6 +55,7 @@ pub struct Component {
 pub struct RustVersion {
     pub version: String,
     pub release_date: String,
+    pub git_commit: Option<String>,
     pub latest_stable: bool,
     pub latest_beta: bool,
     pub latest_nightly: bool,

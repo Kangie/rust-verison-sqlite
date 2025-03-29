@@ -6,7 +6,7 @@
 </head>
 <body>
 
-    <h1>{{ version.version }}</h1>
+    <h1>{{ version.version }}{% if version.git_commit %}<code> <a href=https://github.com/rust-lang/rust/commit/{{ version.git_commit }}>{{ version.git_commit }}</a></code>{% endif %}</h1>
     <p>Released on: {{ version.release_date }}</p>
 
     {% if version.latest_stable %}
@@ -34,7 +34,6 @@
             <tr>
                 <td>{{ component.name }}</td>
                 <td>{{ component.version }}</td>
-                <td>{{ component.git_commit }}</td>
                 <td style="background-color: {% if component.profile_complete %}green{% endif %};">
                     {{ component.profile_complete }}
                 </td>
@@ -47,23 +46,6 @@
             </tr>
         {% endfor %}
     </table>
-
-    {% for component in version.components %}
-      {% if component.target %}
-      <div class="component-details">
-        <h3>{{component.name}} Target Details</h3>
-        <ul>
-            {% for target in component.target %}
-            {% if target.url %}
-            <li>
-              <strong>{{target.name}}</strong>: <a href="{{target.url}}">{{target.url}}</a> (Hash: {{target.hash}})
-            </li>
-            {% endif %}
-            {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
-    {% endfor %}
 
     {% if version.artefacts %}
     <h2>Artefacts</h2>

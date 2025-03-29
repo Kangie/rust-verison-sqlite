@@ -53,11 +53,12 @@ fn get_named_channel_rows(mut statement: Statement) -> RustVersionsAggResult {
     statement
         .query_map([], |row| {
             Ok(RustVersion {
-                version: row.get(0)?,
-                release_date: row.get(1)?,
-                latest_stable: row.get(2)?,
-                latest_beta: row.get(3)?,
-                latest_nightly: row.get(4)?,
+                version: row.get("version")?,
+                release_date: row.get("release_date")?,
+                git_commit: None,
+                latest_stable: row.get("latest_stable")?,
+                latest_beta: row.get("latest_beta")?,
+                latest_nightly: row.get("latest_nightly")?,
                 components: vec![],
                 profiles: None,
                 renames: None,
@@ -154,6 +155,7 @@ fn get_all_version_rows(mut statement: Statement) -> RustVersionsAggResult {
             Ok(RustVersion {
                 version: row.get(0)?,
                 release_date: row.get(1)?,
+                git_commit: None,
                 latest_stable: row.get(2)?,
                 latest_beta: row.get(3)?,
                 latest_nightly: row.get(4)?,
@@ -210,6 +212,16 @@ fn get_version_info(conn: &Connection, version: Option<String>) -> RustVersionsA
 
     let mut version_info = get_version_info_rows(stmt, &query_version)?;
 
+    let git_commit = match get_rust_commit_hash(conn, &query_version) {
+        Ok(commit) => Some(commit),
+        Err(rusqlite::Error::QueryReturnedNoRows) => None,
+        Err(e) => return Err(e.into()),
+    };
+
+    if let Some(version) = version_info.first_mut() {
+        version.git_commit = git_commit;
+    }
+
     if let Some(version) = version_info.first_mut() {
         version.components = get_rust_components(conn, &version.version)?;
     }
@@ -228,11 +240,12 @@ fn get_version_info_rows(mut statement: Statement, version: &String) -> RustVers
     statement
         .query_map([version], |row| {
             Ok(RustVersion {
-                version: row.get(0)?,
-                release_date: row.get(1)?,
-                latest_stable: row.get(2)?,
-                latest_beta: row.get(3)?,
-                latest_nightly: row.get(4)?,
+                version: row.get("version")?,
+                release_date: row.get("release_date")?,
+                git_commit: None,
+                latest_stable: row.get("latest_stable")?,
+                latest_beta: row.get("latest_beta")?,
+                latest_nightly: row.get("latest_nightly")?,
                 components: vec![],
                 profiles: None,
                 renames: None,
@@ -265,4 +278,35 @@ fn get_rust_version_artefact_rows(mut statement: Statement, version: &str) -> Re
             })
         })
         .and_then(Iterator::collect)
+}
+
+fn get_rust_commit_hash(conn: &Connection, version: &str) -> Result<String, rusqlite::Error> {
+    let stmt = conn.prepare(
+        "SELECT
+            components.git_commit
+        FROM
+            components
+        INNER JOIN
+            rust_versions
+        ON
+            components.rust_version = rust_versions.version
+        WHERE
+            rust_versions.version = ?1
+        AND
+            components.git_commit != 'None' LIMIT 1",
+    )?;
+
+    get_rust_commit_hash_row(stmt, version)
+}
+
+fn get_rust_commit_hash_row(mut statement: Statement, version: &str) -> Result<String, rusqlite::Error> {
+    let mut rows = statement.query_map([version], |row| {
+        Ok(row.get("git_commit")?)
+    })?;
+
+    if let Some(row) = rows.next() {
+        row
+    } else {
+        Err(rusqlite::Error::QueryReturnedNoRows)
+    }
 }
