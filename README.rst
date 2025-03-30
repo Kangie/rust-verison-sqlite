@@ -27,10 +27,16 @@ To run the web app, run the following command:
 
     user@host$ cargo run
 
-The web app will launch on port 8080. You can access the following pages:
+The web app will launch on port 8080. You can access the following endpoint:
 
-- `/`
-- `/info/all`
-- `/info/<version>`
+- ``/``
+- ``/info/all``
+- ``/info/«version»``
+- ``/info/component/«component»/«version»``
 
-Where `<version>` is a version number, such as `1.0.0`, `1.0.0-beta`, or `1.0.0-nightly`, or `nightly`, `beta`, or `stable`.
+Additionally an API exists to retrieve information in JSON format:
+
+- ``/api/v1/version/«version»``
+- ``/api/v1/component/«component»/«version»``
+
+Where ``«version»`` is a version number, such as ``1.0.0``, ``1.0.0-beta``, or ``1.0.0-nightly``, and for the ``version`` endpoint a named channel like ``nightly``, ``beta``, or ``stable`` (also exposed as ``latest``).
