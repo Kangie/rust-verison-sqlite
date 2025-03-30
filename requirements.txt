@@ -1,0 +1,4 @@
+Requests==2.32.3
+semver==3.0.4
+structlog==25.2.0
+tqdm==4.67.1
