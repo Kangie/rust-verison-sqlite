@@ -7,17 +7,41 @@ pub type Pool = r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>;
 pub type Connection = r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 type RustVersionsAggResult = Result<Vec<RustVersion>, rusqlite::Error>;
 type ComponentAggResult = Result<Vec<Component>, rusqlite::Error>;
+type ComponentResult = Result<Component, rusqlite::Error>;
+
+pub enum ComponentQueries {
+    GetRustComponent,
+}
 
 #[allow(clippy::enum_variant_names)]
-pub enum Queries {
+pub enum VersionQueries {
     GetNamedChannels,
     GetAllVersions,
     GetVersionInfo,
 }
 
-pub async fn execute(
+pub async fn execute_components(
     pool: &Pool,
-    query: Queries,
+    query: ComponentQueries,
+    component: String,
+    version: String,
+) -> Result<Component, Error> {
+    let pool = pool.clone();
+
+    let conn = web::block(move || pool.get())
+        .await?
+        .map_err(error::ErrorInternalServerError)?;
+
+    web::block(move || match query {
+        ComponentQueries::GetRustComponent => get_rust_component(&conn, &component, &version),
+    })
+    .await?
+    .map_err(error::ErrorInternalServerError)
+}
+
+pub async fn execute_versions(
+    pool: &Pool,
+    query: VersionQueries,
     param: Option<String>,
 ) -> Result<Vec<RustVersion>, Error> {
     let pool = pool.clone();
@@ -27,9 +51,9 @@ pub async fn execute(
         .map_err(error::ErrorInternalServerError)?;
 
     web::block(move || match query {
-        Queries::GetNamedChannels => get_named_channels(&conn),
-        Queries::GetAllVersions => get_all_versions(&conn),
-        Queries::GetVersionInfo => get_version_info(&conn, param),
+        VersionQueries::GetNamedChannels => get_named_channels(&conn),
+        VersionQueries::GetAllVersions => get_all_versions(&conn),
+        VersionQueries::GetVersionInfo => get_version_info(&conn, param),
     })
     .await?
     .map_err(error::ErrorInternalServerError)
@@ -86,10 +110,10 @@ fn get_rust_components(conn: &Connection, version: &str) -> ComponentAggResult {
             components.rust_version = ?1",
     )?;
 
-    get_component_rows(stmt, version)
+    get_version_components_rows(stmt, version)
 }
 
-fn get_component_rows(mut statement: Statement, version: &str) -> ComponentAggResult {
+fn get_version_components_rows(mut statement: Statement, version: &str) -> ComponentAggResult {
     let mut components_map: std::collections::HashMap<String, Component> =
         std::collections::HashMap::new();
 
@@ -138,6 +162,63 @@ fn get_component_rows(mut statement: Statement, version: &str) -> ComponentAggRe
         .collect::<Result<_, rusqlite::Error>>()?;
 
     Ok(components_map.into_values().collect())
+}
+
+fn get_rust_component(conn: &Connection, component: &str, version: &str) -> ComponentResult {
+    let stmt = conn.prepare(
+        "SELECT
+            components.name AS component_name, components.version, components.git_commit, components.profile_complete,
+            components.profile_default, components.profile_minimal, targets.name AS target_name, targets.url,
+            targets.hash
+        FROM
+            components
+        LEFT JOIN
+            targets
+        ON
+            components.id = targets.component
+        WHERE
+            components.rust_version = ?1
+        AND
+            components.name = ?2",
+    )?;
+
+    get_component_rows(stmt, version, component)
+}
+
+fn get_component_rows(mut statement: Statement, version: &str, component: &str) -> ComponentResult {
+    let mut rust_component: Option<Component> = None;
+
+    statement
+        .query_map([version, component], |row| {
+            let target = ComponentTarget {
+                name: row.get("target_name").unwrap_or_default(),
+                url: row.get("url").unwrap_or_default(),
+                hash: row.get("hash").unwrap_or_default(),
+            };
+
+            if let Some(comp) = &mut rust_component {
+                if let Some(targets) = &mut comp.target {
+                    targets.push(target);
+                } else {
+                    comp.target = Some(vec![target]);
+                }
+            } else {
+                rust_component = Some(Component {
+                    name: row.get("component_name")?,
+                    version: row.get("version")?,
+                    git_commit: row.get("git_commit")?,
+                    profile_complete: row.get("profile_complete")?,
+                    profile_default: row.get("profile_default")?,
+                    profile_minimal: row.get("profile_minimal")?,
+                    target: Some(vec![target]),
+                });
+            }
+
+            Ok(())
+        })?
+        .collect::<Result<(), rusqlite::Error>>()?;
+
+    rust_component.ok_or_else(|| rusqlite::Error::QueryReturnedNoRows)
 }
 
 fn get_all_versions(conn: &Connection) -> RustVersionsAggResult {
@@ -333,10 +414,11 @@ fn get_rust_commit_hash(conn: &Connection, version: &str) -> Result<String, rusq
     get_rust_commit_hash_row(stmt, version)
 }
 
-fn get_rust_commit_hash_row(mut statement: Statement, version: &str) -> Result<String, rusqlite::Error> {
-    let mut rows = statement.query_map([version], |row| {
-        Ok(row.get("git_commit")?)
-    })?;
+fn get_rust_commit_hash_row(
+    mut statement: Statement,
+    version: &str,
+) -> Result<String, rusqlite::Error> {
+    let mut rows = statement.query_map([version], |row| Ok(row.get("git_commit")?))?;
 
     if let Some(row) = rows.next() {
         row

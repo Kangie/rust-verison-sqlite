@@ -192,13 +192,14 @@ def init_tables(database):
         execute_query(database, ''.join(statement))
 
 
-def get_id_for_component(database: str, component_name: str) -> int:
+def get_id_for_component(database: str, component_name: str, rust_version: str) -> int:
     """
     Retrieve the ID of a component from the database.
 
     Args:
         database (str): The file path to the SQLite database.
         component_name (str): The name of the component to retrieve.
+        rust_version (str): The version of Rust for which the component is associated.
 
     Returns:
         int: The ID of the component if found, otherwise -1.
@@ -210,7 +211,16 @@ def get_id_for_component(database: str, component_name: str) -> int:
     try:
         connection = sqlite3.connect(database)
         cursor = connection.cursor()
-        cursor.execute(f'SELECT id FROM components WHERE name = "{component_name}"')
+        cursor.execute(f'''
+                       SELECT
+                        id
+                       FROM
+                        components
+                       WHERE
+                        name = "{component_name}"
+                       AND
+                        rust_version = "{rust_version}";
+                    ''')
         record = cursor.fetchone()
         cursor.close()
 
@@ -258,23 +268,25 @@ def insert_rust_version(database: str, rust: RustVersion) -> bool:
     for component in rust.components:
         log.info(f'Inserting targets for Rust {rust.version} component: {component.name} into the database')
 
-        component_id = get_id_for_component(database, component.name)
+        component_id = get_id_for_component(database, component.name, rust.version)
         if component_id == -1:
             log.error(f'Failed to retrieve ID for component {component.name}')
             raise Exception(f'Component ID not found for {component.name}')
 
         target_rows = [
             (target.name, target.url, target.hash, str(component_id))
-            for target in component.targets
+            for target in component.targets if target.url  # Filter out targets with None or empty URLs
         ]
-        execute_query(
-            database,
-            generate_insert(
-                'targets',
-                ('name', 'url', 'hash', 'component'),
-                target_rows
+
+        if len(target_rows) > 0:
+            execute_query(
+                database,
+                generate_insert(
+                    'targets',
+                    ('name', 'url', 'hash', 'component'),
+                    target_rows
+                )
             )
-        )
 
     log.info(f'Inserting artefacts for Rust version {rust.version} into the database')
     artefact_rows = [

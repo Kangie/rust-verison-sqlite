@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ component.name }} - {{ component.version }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --border-color: #cccccc;
+            --hover-bg-color: #f4f4f4;
+            --table-header-bg: #eaeaea;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+            --bg-color: #1e1e1e;
+            --text-color: #f1f1f1;
+            --border-color: #444;
+            --hover-bg-color: #333;
+            --table-header-bg: #2a2a2a;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            }
+        }
+
+        .component-row {
+            position: relative;
+        }
+
+        .target-details {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            z-index: 10;
+            width: 300px;
+            box-shadow: 0 4px 8px var(--shadow-color);
+            color: var(--text-color);
+        }
+
+        .component-row:hover .target-details {
+            display: block;
+        }
+
+        .target-details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .target-details th, .target-details td {
+            border: 1px solid var(--border-color);
+            padding: 8px;
+        }
+
+        .target-details th {
+            background-color: var(--table-header-bg);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>{{ component.name }} - <a href="/info/{{ rustversion }}">{{ component.version }}</a></h1>
+
+    <h2>Targets</h2>
+
+    <table>
+        <tr>
+            <th>Target Name</th>
+            <th>URL</th>
+            <th>Hash</th>
+        </tr>
+        {% for target in component.target %}
+        <tr>
+            <td>{{ target.name }}</td>
+            <td><a href="{{ target.url }}">{{ target.url }}</a></td>
+            <td>{{ target.hash }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

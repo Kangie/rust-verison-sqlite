@@ -4,7 +4,7 @@ use env_logger::Env;
 use tera::{Context, Tera};
 
 mod db;
-use db::{Pool, Queries};
+use db::{ComponentQueries, Pool, VersionQueries};
 
 pub mod models;
 
@@ -12,11 +12,11 @@ pub mod models;
 pub async fn hello(tera: Data<Tera>, db: web::Data<Pool>) -> impl Responder {
     let mut ctx = Context::new();
 
-    let versions = db::execute(&db, Queries::GetAllVersions, None)
+    let versions = db::execute_versions(&db, VersionQueries::GetAllVersions, None)
         .await
         .unwrap();
     ctx.insert("versions", &versions);
-    let named_channels = db::execute(&db, Queries::GetNamedChannels, None)
+    let named_channels = db::execute_versions(&db, VersionQueries::GetNamedChannels, None)
         .await
         .unwrap();
     ctx.insert("named_channels", &named_channels);
@@ -32,12 +32,13 @@ pub async fn versioninfo(
 ) -> impl Responder {
     let mut ctx = Context::new();
 
-    let rustversion = db::execute(&db, Queries::GetVersionInfo, Some(path.to_string()))
-        .await
-        .unwrap()
-        .into_iter()
-        .next()
-        .unwrap();
+    let rustversion =
+        db::execute_versions(&db, VersionQueries::GetVersionInfo, Some(path.to_string()))
+            .await
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
     ctx.insert("version", &rustversion);
 
     HttpResponse::Ok().body(tera.render("versioninfo.tera", &ctx).unwrap())
@@ -47,22 +48,62 @@ pub async fn versioninfo(
 pub async fn allversions(tera: Data<Tera>, db: web::Data<Pool>) -> impl Responder {
     let mut ctx = Context::new();
 
-    let versions = db::execute(&db, Queries::GetAllVersions, None)
+    let versions = db::execute_versions(&db, VersionQueries::GetAllVersions, None)
         .await
         .unwrap();
     ctx.insert("versions", &versions);
     HttpResponse::Ok().body(tera.render("allversions.tera", &ctx).unwrap())
 }
 
+#[get("/info/component/{name}/{version}")]
+pub async fn component(
+    tera: Data<Tera>,
+    path: web::Path<(String, String)>,
+    db: web::Data<Pool>,
+) -> impl Responder {
+    let mut ctx = Context::new();
+
+    let component = db::execute_components(
+        &db,
+        ComponentQueries::GetRustComponent,
+        path.0.to_string(),
+        path.1.to_string(),
+    )
+    .await
+    .unwrap();
+    ctx.insert("rustversion", &path.1.to_string());
+    ctx.insert("component", &component);
+
+    HttpResponse::Ok().body(tera.render("component.tera", &ctx).unwrap())
+}
+
 #[get("api/v1/version/{version}")]
 pub async fn versioninfoapi(path: web::Path<String>, db: web::Data<Pool>) -> impl Responder {
-    let rustversion = db::execute(&db, Queries::GetVersionInfo, Some(path.to_string()))
-        .await
-        .unwrap()
-        .into_iter()
-        .next()
-        .unwrap();
+    let rustversion =
+        db::execute_versions(&db, VersionQueries::GetVersionInfo, Some(path.to_string()))
+            .await
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
     HttpResponse::Ok().json(rustversion)
+}
+
+#[get("/api/v1/component/{name}/{version}")]
+pub async fn componentinfoapi(
+    path: web::Path<(String, String)>,
+    db: web::Data<Pool>,
+) -> impl Responder {
+    let rust_component = db::execute_components(
+        &db,
+        ComponentQueries::GetRustComponent,
+        path.0.to_string(),
+        path.1.to_string(),
+    )
+    .await
+    .unwrap();
+
+    HttpResponse::Ok().json(rust_component)
 }
 
 #[actix_web::main]
@@ -82,6 +123,8 @@ async fn main() -> std::io::Result<()> {
             .service(versioninfo)
             .service(allversions)
             .service(versioninfoapi)
+            .service(component)
+            .service(componentinfoapi)
             .service(Files::new("/static", "./static")) // No need to enable listing
     })
     .bind(("127.0.0.1", 8080))?

@@ -31,7 +31,15 @@
         </tr>
         {% for component in version.components | sort(attribute="name") %}
             <tr>
-                <td>{{ component.name }}</td>
+                <td>
+                    {% if component.target and component.target | length > 0 %}
+                        <a href="/info/component/{{ component.name }}/{{ version.version }}">
+                            {{ component.name }}
+                        </a>
+                    {% else %}
+                        {{ component.name }}
+                    {% endif %}
+                </td>
                 <td>{{ component.version }}</td>
                 <td style="background-color: {% if component.profile_complete %}green{% endif %};">
                     {{ component.profile_complete }}
