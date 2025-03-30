@@ -17,7 +17,7 @@ To ingest the information from the Rust Distribution server, run the following c
 
 .. code-block:: console
 
-    user@host$ python3 rust_version_parser.py
+    user@host$ python3 rust_manifest_ingestor.py
 
 This will create a SQLite database file named `rust_versions.db` in the root of the repository.
 
