@@ -16,7 +16,7 @@ import sqlite3
 import structlog
 import tomllib as toml
 
-loglevel = os.environ.get('LOGLEVEL', 'INFO').upper()
+loglevel = os.environ.get("LOGLEVEL", "INFO").upper()
 structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(loglevel))
 log = structlog.get_logger()
 
@@ -91,12 +91,12 @@ def fetch_manifests():
     Raises:
         Exception: If the HTTP request to fetch the manifests fails.
     """
-    url = 'https://static.rust-lang.org/manifests.txt'
-    log.debug(f'Fetching manifests from {url}')
+    url = "https://static.rust-lang.org/manifests.txt"
+    log.debug(f"Fetching manifests from {url}")
     r = requests.get(url)
     if r.status_code != 200:
-        raise Exception('Failed to fetch manifests')
-    return r.text.split('\n')
+        raise Exception("Failed to fetch manifests")
+    return r.text.split("\n")
 
 
 def remove_old_channel_updates(manifests: List[str]) -> Tuple[List[str], str, str, str]:
@@ -128,31 +128,31 @@ def remove_old_channel_updates(manifests: List[str]) -> Tuple[List[str], str, st
         if not manifest:
             continue
         match manifest:
-            case _ if 'channel-rust-nightly.toml' in manifest:
+            case _ if "channel-rust-nightly.toml" in manifest:
                 latest_nightly = manifest
-            case _ if 'channel-rust-beta.toml' in manifest:
+            case _ if "channel-rust-beta.toml" in manifest:
                 latest_beta = manifest
-            case _ if 'channel-rust-stable.toml' in manifest:
+            case _ if "channel-rust-stable.toml" in manifest:
                 latest_stable = manifest
-            case _ if '1.8.0' in manifest and count_1_8 < 1:
+            case _ if "1.8.0" in manifest and count_1_8 < 1:
                 count_1_8 += 1
-            case _ if '1.14.0' in manifest and count_1_14 < 1:
+            case _ if "1.14.0" in manifest and count_1_14 < 1:
                 count_1_14 += 1
-            case _ if '1.15.1' in manifest and count_1_15 < 1:
+            case _ if "1.15.1" in manifest and count_1_15 < 1:
                 count_1_15 += 1
-            case _ if '1.49.0' in manifest and count_1_49 < 2:
+            case _ if "1.49.0" in manifest and count_1_49 < 2:
                 count_1_49 += 1
-            case _ if 'beta' in manifest:
-                if re.search(r'beta\.\d', manifest):
+            case _ if "beta" in manifest:
+                if re.search(r"beta\.\d+", manifest):
                     filtered_manifests.append(manifest)
-            case _ if manifest.count('.') <= 4:
+            case _ if manifest.count(".") <= 4:
                 continue
             case _:
                 filtered_manifests.append(manifest)
 
-    filtered_manifests.append(latest_nightly)
-
-    log.debug(f"Removed duplicate \"channel\" releases; {len(filtered_manifests)} manifests remaining")
+    log.debug(
+        f'Removed duplicate "channel" releases; {len(filtered_manifests)} manifests remaining'
+    )
 
     # We want to process newest to oldest, so reverse the list before returning
     return filtered_manifests[::-1], latest_stable, latest_beta, latest_nightly
@@ -190,46 +190,58 @@ def parse_manifest(manifest: str) -> RustVersion:
     log.debug(f"Parsing manifest: {url}")
     data = toml.loads(response.text)
 
-    release_date = data['date']
-    version = data['pkg']['rustc']['version'].split(' ')[0]
+    release_date = data["date"]
+    version = data["pkg"]["rustc"]["version"].split(" ")[0]
 
     # cargo, clippy, rustc, etc
     components: List[Component] = []
-    for component in data['pkg']:
+    for component in data["pkg"]:
         targets: List[Target] = []
-        for target in data['pkg'][component]['target']:
+        for target in data["pkg"][component]["target"]:
             # We'll prefer xz if available
-            url = data['pkg'][component]['target'][target].get('xz_url',
-                                                               data['pkg'][component]['target'][target].get('url'))
-            hash_value = data['pkg'][component]['target'][target].get('xz_hash',
-                                                                      data['pkg'][component]['target'][target].get('hash'))
+            url = data["pkg"][component]["target"][target].get(
+                "xz_url", data["pkg"][component]["target"][target].get("url")
+            )
+            hash_value = data["pkg"][component]["target"][target].get(
+                "xz_hash", data["pkg"][component]["target"][target].get("hash")
+            )
             targets.append(Target(target, url, hash_value))
         log.debug(f"Adding component {component} with {len(targets)} targets")
-        components.append(Component(
-            component,
-            data['pkg'][component]['version'],
-            version,  # We'll match this to the overall Rust version
-            data['pkg'][component].get('git_commit_hash', None),  # Default to None if not present (miri on non-nightly, for example)
-            targets
-        ))
+        components.append(
+            Component(
+                component,
+                data["pkg"][component]["version"],
+                version,  # We'll match this to the overall Rust version
+                data["pkg"][component].get(
+                    "git_commit_hash", None
+                ),  # Default to None if not present (miri on non-nightly, for example)
+                targets,
+            )
+        )
     artefacts = []
-    if 'artifacts' in data:
-        for artefact_type in data['artifacts']:
-            for target in data['artifacts'][artefact_type]['target']:
+    if "artifacts" in data:
+        for artefact_type in data["artifacts"]:
+            for target in data["artifacts"][artefact_type]["target"]:
                 # This is a list, though we really only expect one item per target at this point.
-                artefacts.append(Artefact(
-                    ArtefactType[artefact_type.replace('-', '_')].value,
-                    data['artifacts'][artefact_type]['target'][target][0]['url'],
-                    data['artifacts'][artefact_type]['target'][target][0]['hash-sha256']
-                ))
+                artefacts.append(
+                    Artefact(
+                        ArtefactType[artefact_type.replace("-", "_")].value,
+                        data["artifacts"][artefact_type]["target"][target][0]["url"],
+                        data["artifacts"][artefact_type]["target"][target][0][
+                            "hash-sha256"
+                        ],
+                    )
+                )
 
-    renames = data.get('renames')
-    profiles = data.get('profiles')
+    renames = data.get("renames")
+    profiles = data.get("profiles")
 
-    return RustVersion(version, release_date, components, profiles, renames, artefacts, url)
+    return RustVersion(
+        version, release_date, components, profiles, renames, artefacts, url
+    )
 
 
-def update_rust_version_flags(rusts: List[RustVersion], stable: str, beta: str, nightly: str):
+def set_rust_version_flags(stable: str, beta: str, nightly: str):
     """
     Updates the `latest_stable`, `latest_beta`, and `latest_nightly` flags for the given Rust versions.
 
@@ -244,10 +256,61 @@ def update_rust_version_flags(rusts: List[RustVersion], stable: str, beta: str, 
     beta = parse_manifest(beta).version
     nightly = parse_manifest(nightly).version
 
-    for rust in rusts:
-        rust.latest_stable = rust.version == stable
-        rust.latest_beta = rust.version == beta
-        rust.latest_nightly = rust.version == nightly
+    log.info(
+        f"Setting latest_stable={stable}, latest_beta={beta}, latest_nightly={nightly}"
+    )
+
+    sq.set_rust_version_flags(stable, beta, nightly)
+
+
+def strip_versions_in_db(
+    manifests: list[str], oldversion_numbers: list[str]
+) -> list[str]:
+    """
+    Filters out versions from the manifest list that are already present in the database.
+
+    Args:
+        manifests (list[str]): The list of manifests to process.
+        oldversion_numbers (list[str]): The list of versions already in the database.
+
+    Returns:
+        list[str]: The list of manifests that need to be processed.
+    """
+
+    # static.rust-lang.org/dist/2025-03-17/channel-rust-1.86.0-beta.6.toml
+    # static.rust-lang.org/dist/2025-03-18/channel-rust-1.85.toml
+
+    manifest_versions = []
+    for manifest in manifests:
+        match = re.search(r"channel-rust-([\d.]+)(?:-beta(?:\.\d+)?)?\.toml", manifest)
+        if match:
+            version = match.group(1)
+            beta_suffix = match.group(2) if match and len(match.groups()) >= 2 and match.group(2) else ""
+            manifest_versions.append(version + beta_suffix)
+        else:
+            log.error(f"Failed to extract version from manifest: {manifest}")
+
+    # Filter out versions already in the database
+    new_manifests = []
+    batch_size = 6
+    version_batches = [
+        manifest_versions[i : i + batch_size]
+        for i in range(0, len(manifest_versions), batch_size)
+    ]
+    log.debug(f"Versions retrieved from database:")
+    for batch in version_batches:
+        log.debug(", ".join(batch))
+    for manifest, version in zip(manifests, manifest_versions):
+        log.debug(f"Checking version: {version}")
+        if version not in oldversion_numbers:
+            log.debug(f"Version {version} not found in oldversion_numbers")
+            new_manifests.append(manifest)
+        else:
+            log.debug(f"Version {version} found in oldversion_numbers")
+
+    print(new_manifests)
+
+    return new_manifests
 
 
 def main():
@@ -258,50 +321,62 @@ def main():
         "--number",
         type=int,
         default=0,
-        help="Process only the first N items for testing purposes."
+        help="Process only the first N items for testing purposes.",
     )
     parser.add_argument(
         "--version",
         action="version",
         version="rust-version-parser 0.1",
-        help="Show program's version number and exit."
+        help="Show program's version number and exit.",
     )
     parser.add_argument(
         "--database",
         type=str,
         default="./rust_versions.sqlite3",
-        help="Path to the SQLite database file. Defaults to './rust_versions.sqlite3'."
+        help="Path to the SQLite database file. Defaults to './rust_versions.sqlite3'.",
     )
 
     # Parse arguments
     args = parser.parse_args()
     database = os.path.abspath(args.database)
 
-    if not os.path.exists(database):
+    is_update: bool = os.path.exists(database)
+
+    if not is_update:
         log.info(f"Database file '{database}' does not exist. Creating a new one.")
-        with sqlite3.connect(database) as conn:
-            pass  # This will create an empty database file
+        sqlite3.connect(database).close()  # This will create an empty database file
         sq.init_tables(database)
 
     manifests = fetch_manifests()
     log.info(f"Found {len(manifests)} manifests on dist server")
     clean_manifests, stable, beta, nightly = remove_old_channel_updates(manifests)
-    log.info(f"Processing {len(clean_manifests)} manifests after removing old channel updates")
+    log.info(
+        f"Processing {len(clean_manifests)} manifests after removing old channel updates"
+    )
 
     if args.number > 0:
         log.info(f"Truncating manifest list to {args.number} items")
-        clean_manifests = clean_manifests[:args.number]
+        clean_manifests = clean_manifests[: args.number]
+
+    if is_update:
+        log.info(f"Updating existing database: {database}")
+        oldversions: list[str] = sq.get_rust_version_strings(database)
+        log.info(f"Found {len(oldversions)} existing versions in the database")
+
+        clean_manifests = strip_versions_in_db(clean_manifests, oldversions)
 
     # The limiting factor here is doing single-threaded HTTP requests to fetch the manifests.
     # We can parallelise this with ThreadPoolExecutor.
     with ThreadPoolExecutor():
         rustversions: List[RustVersion] = process_map(parse_manifest, clean_manifests)
 
-    update_rust_version_flags(rustversions, stable, beta, nightly)
-
     # Log versions in batches
     batch_size = 6
-    version_batches = [rustversions[i:i + batch_size] for i in range(0, len(rustversions), batch_size)]
+    version_batches = [
+        rustversions[i : i + batch_size]
+        for i in range(0, len(rustversions), batch_size)
+    ]
+    log.debug(f"Processing {len(rustversions)} versions")
     for batch in version_batches:
         log.debug("Versions: " + ", ".join([version.version for version in batch]))
 
@@ -318,6 +393,8 @@ def main():
 
     for version in rustversions:
         sq.insert_rust_version(database, version)
+
+    sq.set_rust_channel_flags(database, stable, beta, nightly)
 
 
 if __name__ == "__main__":

@@ -1,71 +1,71 @@
-from rust_version_parser import log, RustVersion
+from rustup_manifest_ingestor import log, RustVersion
 import semver
 import sqlite3
 
 
 def execute_query(database: str, query: str) -> bool:
-    '''
+    """
     Open a connection to our database, execute our query in a transaction
     and output some useful logging information, then neatly close the connection.
     Returns True if the transaction was successful, otherwise raises an exception.
-    '''
+    """
     table = None
     type = None
     match query:
-        case q if 'INSERT INTO' in q:
-            table = q.split('INSERT INTO')[1].split()[0]
-            type = 'insert'
-        case q if 'UPDATE' in q:
-            table = q.split('UPDATE')[1].split()[0]
-            type = 'update'
-        case q if 'CREATE TABLE' in q:
-            table = q.split('CREATE TABLE')[1].split()[0]
-            type = 'create'
-        case q if 'DELETE FROM' in q:
-            table = q.split('DELETE FROM')[1].split()[0]
-            type = 'delete'
+        case q if "INSERT INTO" in q:
+            table = q.split("INSERT INTO")[1].split()[0]
+            type = "insert"
+        case q if "UPDATE" in q:
+            table = q.split("UPDATE")[1].split()[0]
+            type = "update"
+        case q if "CREATE TABLE" in q:
+            table = q.split("CREATE TABLE")[1].split()[0]
+            type = "create"
+        case q if "DELETE FROM" in q:
+            table = q.split("DELETE FROM")[1].split()[0]
+            type = "delete"
         case _:
             raise ValueError("Query does not support this operation")
 
     try:
         connection = sqlite3.connect(database)
         cursor = connection.cursor()
-        log.debug(f'Connected to {database}')
+        log.debug(f"Connected to {database}")
         cursor.execute(query)
         connection.commit()
         match type:
-            case 'insert':
-                log.debug(f'Inserted {cursor.rowcount} rows into {table}')
-            case 'update':
-                log.debug(f'Updated {cursor.rowcount} rows in {table}')
-            case 'create':
-                log.debug(f'Created table {table}')
-            case 'delete':
-                log.debug(f'Deleted {cursor.rowcount} rows from {table}')
+            case "insert":
+                log.debug(f"Inserted {cursor.rowcount} rows into {table}")
+            case "update":
+                log.debug(f"Updated {cursor.rowcount} rows in {table}")
+            case "create":
+                log.debug(f"Created table {table}")
+            case "delete":
+                log.debug(f"Deleted {cursor.rowcount} rows from {table}")
         cursor.close()
         return True
 
     except sqlite3.Error as error:
-        f = open(f'./{table}_{type}_query.sql', "w")
+        f = open(f"./{table}_{type}_query.sql", "w")
         f.write(query)
         f.close()
-        raise Exception(f'Failed to execute query on {table}', error)
+        raise Exception(f"Failed to execute query on {table}", error)
     finally:
         if connection:
             connection.close()
-            log.debug(f'Closed connection to {database}')
+            log.debug(f"Closed connection to {database}")
 
 
 def generate_insert(tablename: str, columns: tuple, rows: list[tuple]) -> str:
-    '''
+    """
     Generate a SQLite insert statement for inputs:
     table_name, ('columnx', ... 'columny'), [(column_content,...)]
-    '''
+    """
     insert: list[str] = []
-    insert.append(f'INSERT INTO {tablename} ({",".join(columns)})')
+    insert.append(f"INSERT INTO {tablename} ({','.join(columns)})")
     insert.append("VALUES")
     for idx, row in enumerate(rows):
-        eol = ";" if idx == len(rows)-1 else ','
+        eol = ";" if idx == len(rows) - 1 else ","
         content: list[str] = []
         # Turn our values into something that SQL will like!
         for value in row:
@@ -77,10 +77,10 @@ def generate_insert(tablename: str, columns: tuple, rows: list[tuple]) -> str:
             elif value == "NULL":
                 content.append("NULL")
             else:
-            # Quotes!
-                content.append(f"\"{value}\"")
+                # Quotes!
+                content.append(f'"{value}"')
         insert.append(f"\t({','.join(content)}){eol}")
-    return '\n'.join(insert)
+    return "\n".join(insert)
 
 
 def init_tables(database):
@@ -98,98 +98,102 @@ def init_tables(database):
                   will be created.
 
     """
-    '''
+    """
     Initialise tables
-    '''
+    """
     tables = [
         {
-            'name': 'rust_versions',
-            'columns': [
-                {'name': 'version', 'type': 'TEXT', 'primary_key': True},
-                {'name': 'release_date', 'type': 'INTEGER'},
-                {'name': 'latest_stable', 'type': 'INTEGER', 'default': 0},
-                {'name': 'latest_beta', 'type': 'INTEGER', 'default': 0},
-                {'name': 'latest_nightly', 'type': 'INTEGER', 'default': 0},
-            ]
+            "name": "rust_versions",
+            "columns": [
+                {"name": "version", "type": "TEXT", "primary_key": True},
+                {"name": "release_date", "type": "INTEGER"},
+                {"name": "latest_stable", "type": "INTEGER", "default": 0},
+                {"name": "latest_beta", "type": "INTEGER", "default": 0},
+                {"name": "latest_nightly", "type": "INTEGER", "default": 0},
+            ],
         },
         {
-            'name': 'components',
-            'columns': [
-                {'name': 'name', 'type': 'TEXT'},
-                {'name': 'id', 'type': 'INTEGER', 'primary_key': True},
-                {'name': 'version', 'type': 'TEXT'},
-                {'name': 'rust_version', 'type': 'TEXT'},
-                {'name': 'git_commit', 'type': 'TEXT'},
-                {'name': 'profile_complete', 'type': 'INTEGER', 'default': 0},
-                {'name': 'profile_default', 'type': 'INTEGER', 'default': 0},
-                {'name': 'profile_minimal', 'type': 'INTEGER', 'default': 0},
+            "name": "components",
+            "columns": [
+                {"name": "name", "type": "TEXT"},
+                {"name": "id", "type": "INTEGER", "primary_key": True},
+                {"name": "version", "type": "TEXT"},
+                {"name": "rust_version", "type": "TEXT"},
+                {"name": "git_commit", "type": "TEXT"},
+                {"name": "profile_complete", "type": "INTEGER", "default": 0},
+                {"name": "profile_default", "type": "INTEGER", "default": 0},
+                {"name": "profile_minimal", "type": "INTEGER", "default": 0},
             ],
-            'constraints': {
-                'foreign_key': {
-                    'name': 'rust_version',
-                    'table': 'rust_versions',
-                    'references': 'version',
+            "constraints": {
+                "foreign_key": {
+                    "name": "rust_version",
+                    "table": "rust_versions",
+                    "references": "version",
                 }
-            }
+            },
         },
         {
-            'name': 'targets',
-            'columns': [
-                {'name': 'name', 'type': 'TEXT'},
-                {'name': 'id', 'type': 'INTEGER', 'primary_key': True},
-                {'name': 'url', 'type': 'TEXT'},
-                {'name': 'hash', 'type': 'TEXT'},
-                {'name': 'component', 'type': 'INTEGER'},
+            "name": "targets",
+            "columns": [
+                {"name": "name", "type": "TEXT"},
+                {"name": "id", "type": "INTEGER", "primary_key": True},
+                {"name": "url", "type": "TEXT"},
+                {"name": "hash", "type": "TEXT"},
+                {"name": "component", "type": "INTEGER"},
             ],
-            'constraints': {
-                'foreign_key': {
-                    'name': 'component',
-                    'table': 'components',
-                    'references': 'id',
+            "constraints": {
+                "foreign_key": {
+                    "name": "component",
+                    "table": "components",
+                    "references": "id",
                 }
-            }
+            },
         },
         {
-            'name': 'artefacts',
-            'columns': [
-                {'name': 'id', 'type': 'INTEGER', 'primary_key': True},
-                {'name': 'rust_version', 'type': 'TEXT'},
-                {'name': 'type', 'type': 'INTEGER'},
-                {'name': 'url', 'type': 'TEXT'},
-                {'name': 'hash', 'type': 'TEXT'},
+            "name": "artefacts",
+            "columns": [
+                {"name": "id", "type": "INTEGER", "primary_key": True},
+                {"name": "rust_version", "type": "TEXT"},
+                {"name": "type", "type": "INTEGER"},
+                {"name": "url", "type": "TEXT"},
+                {"name": "hash", "type": "TEXT"},
             ],
-            'constraints': {
-                'foreign_key': {
-                    'name': 'rust_version',
-                    'table': 'rust_versions',
-                    'references': 'version',
+            "constraints": {
+                "foreign_key": {
+                    "name": "rust_version",
+                    "table": "rust_versions",
+                    "references": "version",
                 }
-            }
+            },
         },
     ]
     for table in tables:
         statement: list = []
-        statement.append(f'CREATE TABLE {table["name"]} (\n')
+        statement.append(f"CREATE TABLE {table['name']} (\n")
         for column in table["columns"]:
             # column_name data_type [PRIMARY KEY, NOT NULL, DEFAULT 0, etc.]
-            statement.append(f'\t{column["name"]} {column["type"]}')
+            statement.append(f"\t{column['name']} {column['type']}")
             if "primary_key" in column:
-                statement.append(' PRIMARY KEY,\n')
+                statement.append(" PRIMARY KEY,\n")
             elif "unique" in column:
-                statement.append(' UNIQUE,\n')
+                statement.append(" UNIQUE,\n")
             else:
-                statement.append(',\n')
+                statement.append(",\n")
         if "constraints" in table:
             # There are other constraints, but this is all I care about for now
             if "foreign_key" in table["constraints"]:
-                statement.append(f'\tFOREIGN KEY ({table["constraints"]["foreign_key"]["name"]})\n')
-                statement.append(f'\t\tREFERENCES {table["constraints"]["foreign_key"]["table"]} ({table["constraints"]["foreign_key"]["references"]})\n')
+                statement.append(
+                    f"\tFOREIGN KEY ({table['constraints']['foreign_key']['name']})\n"
+                )
+                statement.append(
+                    f"\t\tREFERENCES {table['constraints']['foreign_key']['table']} ({table['constraints']['foreign_key']['references']})\n"
+                )
         # Tidy up the last line of the statement
-        lastrow = statement[-1].replace(',\n', '\n')
+        lastrow = statement[-1].replace(",\n", "\n")
         del statement[-1]
         statement.append(lastrow)
         statement.append(");")
-        execute_query(database, ''.join(statement))
+        execute_query(database, "".join(statement))
 
 
 def get_id_for_component(database: str, component_name: str, rust_version: str) -> int:
@@ -230,13 +234,13 @@ def get_id_for_component(database: str, component_name: str, rust_version: str) 
             return -1
 
     except sqlite3.Error as error:
-        log.error(f'Failed to read data from components', error)
+        log.error("Failed to read data from components", error)
         return -1
 
     finally:
         if connection:
             connection.close()
-            log.debug(f'Closed connection to {database}')
+            log.debug(f"Closed connection to {database}")
 
 
 def insert_rust_version(database: str, rust: RustVersion) -> bool:
@@ -244,51 +248,84 @@ def insert_rust_version(database: str, rust: RustVersion) -> bool:
     Insert a Rust version into the database.
     """
 
-    log.info(f'Inserting Rust version {rust.version} into the database')
+    log.info(f"Inserting Rust version {rust.version} into the database")
     execute_query(
         database,
         generate_insert(
-            'rust_versions',
-            ('version', 'release_date', 'latest_stable', 'latest_beta', 'latest_nightly'),
-            [(rust.version, rust.release_date, str(int(rust.latest_stable)), str(int(rust.latest_beta)), str(int(rust.latest_nightly)))]
-        )
+            "rust_versions",
+            (
+                "version",
+                "release_date",
+                "latest_stable",
+                "latest_beta",
+                "latest_nightly",
+            ),
+            [
+                (
+                    rust.version,
+                    rust.release_date,
+                    '0',
+                    '0',
+                    '0',
+                )
+            ],
+        ),
     )
 
-    log.info(f'Inserting components for Rust {rust.version} into the database')
+    log.info(f"Inserting components for Rust {rust.version} into the database")
     execute_query(
         database,
         generate_insert(
-            'components',
-            ('name', 'version', 'rust_version', 'git_commit', 'profile_complete', 'profile_default', 'profile_minimal'),
-            [(component.name, component.version,
-              component.rust_version, component.git_commit, '0', '0', '0') for component in rust.components]
-        )
+            "components",
+            (
+                "name",
+                "version",
+                "rust_version",
+                "git_commit",
+                "profile_complete",
+                "profile_default",
+                "profile_minimal",
+            ),
+            [
+                (
+                    component.name,
+                    component.version,
+                    component.rust_version,
+                    component.git_commit,
+                    "0",
+                    "0",
+                    "0",
+                )
+                for component in rust.components
+            ],
+        ),
     )
 
     for component in rust.components:
-        log.info(f'Inserting targets for Rust {rust.version} component: {component.name} into the database')
+        log.info(
+            f"Inserting targets for Rust {rust.version} component: {component.name} into the database"
+        )
 
         component_id = get_id_for_component(database, component.name, rust.version)
         if component_id == -1:
-            log.error(f'Failed to retrieve ID for component {component.name}')
-            raise Exception(f'Component ID not found for {component.name}')
+            log.error(f"Failed to retrieve ID for component {component.name}")
+            raise Exception(f"Component ID not found for {component.name}")
 
         target_rows = [
             (target.name, target.url, target.hash, str(component_id))
-            for target in component.targets if target.url  # Filter out targets with None or empty URLs
+            for target in component.targets
+            if target.url  # Filter out targets with None or empty URLs
         ]
 
         if len(target_rows) > 0:
             execute_query(
                 database,
                 generate_insert(
-                    'targets',
-                    ('name', 'url', 'hash', 'component'),
-                    target_rows
-                )
+                    "targets", ("name", "url", "hash", "component"), target_rows
+                ),
             )
 
-    log.info(f'Inserting artefacts for Rust version {rust.version} into the database')
+    log.info(f"Inserting artefacts for Rust version {rust.version} into the database")
     artefact_rows = [
         (rust.version, str(artefact.type), artefact.url, artefact.hash)
         for artefact in rust.artefacts
@@ -297,19 +334,138 @@ def insert_rust_version(database: str, rust: RustVersion) -> bool:
         execute_query(
             database,
             generate_insert(
-                'artefacts',
-                ('rust_version', 'type', 'url', 'hash'),
-                artefact_rows
-            )
+                "artefacts", ("rust_version", "type", "url", "hash"), artefact_rows
+            ),
         )
 
-    if semver.compare(rust.version, '1.32.0') > 0:
-        log.info(f'Marking Rust {rust.version} components with profile flags')
+    if semver.compare(rust.version, "1.32.0") > 0:
+        log.info(f"Marking Rust {rust.version} components with profile flags")
 
         for profile, components in rust.profiles.items():
             query = f'''
             UPDATE components SET profile_{profile} = 1
-            WHERE name IN ({",".join(f"\"{component}\"" for component in components)})
+            WHERE name IN ({",".join(f'"{component}"' for component in components)})
             AND rust_version = "{rust.version}";
             '''
             execute_query(database, query)
+
+
+def get_rust_version_strings(database: str) -> list[str]:
+    """
+    Retrieve all Rust version strings from the database.
+
+    Args:
+        database (str): The file path to the SQLite database.
+
+    Returns:
+        list[str]: A list of Rust version strings in the database.
+
+    Raises:
+        sqlite3.Error: If an error occurs while connecting to the database or executing the query.
+    """
+
+    try:
+        connection = sqlite3.connect(database)
+        cursor = connection.cursor()
+        cursor.execute("""
+                       SELECT
+                        version
+                       FROM
+                        rust_versions;
+                    """)
+        records = cursor.fetchall()
+        cursor.close()
+
+        rust_versions = [record[0] for record in records]
+        return rust_versions
+
+    except sqlite3.Error as error:
+        log.error("Failed to read data from rust_versions", error)
+        return []
+
+    finally:
+        if connection:
+            connection.close()
+            log.debug(f"Closed connection to {database}")
+
+
+def get_rust_versions(database: str) -> list[RustVersion]:
+    """
+    Retrieve all Rust versions from the database.
+
+    Args:
+        database (str): The file path to the SQLite database.
+
+    Returns:
+        list[RustVersion]: A list of RustVersion objects representing the Rust versions in the database.
+
+    Raises:
+        sqlite3.Error: If an error occurs while connecting to the database or executing the query.
+    """
+
+    try:
+        connection = sqlite3.connect(database)
+        cursor = connection.cursor()
+        cursor.execute("""
+                       SELECT
+                        version,
+                        release_date,
+                        latest_stable,
+                        latest_beta,
+                        latest_nightly
+                       FROM
+                        rust_versions;
+                    """)
+        records = cursor.fetchall()
+        cursor.close()
+
+        rust_versions = []
+        for record in records:
+            rust_version = RustVersion(
+                version=record[0],
+                release_date=record[1],
+                latest_stable=bool(record[2]),
+                latest_beta=bool(record[3]),
+                latest_nightly=bool(record[4]),
+            )
+
+            rust_versions.append(rust_version)
+
+        return rust_versions
+
+    except sqlite3.Error as error:
+        log.error("Failed to read data from rust_versions", error)
+        return []
+
+    finally:
+        if connection:
+            connection.close()
+            log.debug(f"Closed connection to {database}")
+
+
+def set_rust_channel_flags(db: str, stable: str, beta: str, nightly: str):
+    """
+    Sets the flags that indicate the latest stable, beta, and nightly Rust channels.
+    """
+
+    log.info("Setting latest channel flags in the database")
+
+    # It's better to use one query to update all three flags for efficiency.
+    query = f'''
+    UPDATE rust_versions
+    SET
+        latest_stable = CASE
+                            WHEN version = "{stable}" THEN 1
+                            ELSE latest_stable
+                        END,
+        latest_beta = CASE
+                          WHEN version = "{beta}" THEN 1
+                          ELSE latest_beta
+                      END,
+        latest_nightly = CASE
+                             WHEN version = "{nightly}" THEN 1
+                             ELSE latest_nightly
+                         END;
+    '''
+
+    execute_query(db, query)
