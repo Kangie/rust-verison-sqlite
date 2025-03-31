@@ -1,6 +1,6 @@
 rust_versions.sqlite3
 __pycache__/
-
+rust_version_data/
 
 # Added by cargo
 
