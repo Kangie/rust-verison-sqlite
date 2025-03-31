@@ -105,7 +105,7 @@ fn get_rust_components(conn: &Connection, version: &str) -> ComponentAggResult {
         LEFT JOIN
             targets
         ON
-            components.id = targets.component
+            components.id = targets.component_id
         WHERE
             components.rust_version = ?1",
     )?;
@@ -175,7 +175,7 @@ fn get_rust_component(conn: &Connection, component: &str, version: &str) -> Comp
         LEFT JOIN
             targets
         ON
-            components.id = targets.component
+            components.id = targets.component_id
         WHERE
             components.rust_version = ?1
         AND
