@@ -146,10 +146,10 @@ def filter_and_sort_manifests(
 
     # --- Process paths for filtering, iterating newest-to-oldest ---
     for path in reversed(manifest_paths):
-        if "channel-rust-nightly.toml" in path:
-            continue
-
-        if path == latest_beta or path == latest_stable:
+        if any(
+            channel in path
+            for channel in ["channel-rust-nightly.toml", "channel-rust-beta.toml", "channel-rust-stable.toml"]
+        ):
             continue
 
         # Handle specific historical duplicates (keeping newest)
