@@ -23,6 +23,7 @@ MANIFESTS_URL = f"{DIST_SERVER_BASE_URL}/manifests.txt"
 DEFAULT_DB_PATH = "./rust_versions.sqlite3"
 LOGLEVEL = os.environ.get("LOGLEVEL", "INFO").upper()
 VERSION = "rust-version-parser 0.2"
+MINOR_VERSION_CHANNEL_REGEX = re.compile(r"channel-rust-(\d+\.\d+)\.toml$")
 
 # --- Configuration ---
 structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(LOGLEVEL))
@@ -166,6 +167,10 @@ def filter_and_sort_manifests(
             else:
                 handled_duplicates.add(current_version_match)
                 log.debug(f"Keeping newest duplicate: {path}")
+
+        if MINOR_VERSION_CHANNEL_REGEX.search(path):
+            log.debug(f"Skipping minor-version channel manifest: {path}")
+            continue
 
         # Filter out unversioned beta releases (keep versioned ones like beta.N)
         if "beta" in path and not re.search(r"beta\.\d+", path):
@@ -503,7 +508,7 @@ def main():
 
         if is_new_db:
             log.info("Database file does not exist. Initializing schema.")
-            sq.init_tables(db_connection) 
+            sq.init_tables(db_connection)
         else:
             log.info("Database file exists. Will update.")
             # Schema migration checks could go here
