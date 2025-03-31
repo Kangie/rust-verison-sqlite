@@ -106,6 +106,14 @@ pub async fn componentinfoapi(
     HttpResponse::Ok().json(rust_component)
 }
 
+#[get("/api/v1/named_channels")]
+pub async fn namedchannelsapi(db: web::Data<Pool>) -> impl Responder {
+    let named_channels = db::execute_versions(&db, VersionQueries::GetNamedChannels, None)
+        .await
+        .unwrap();
+    HttpResponse::Ok().json(named_channels)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
@@ -125,6 +133,7 @@ async fn main() -> std::io::Result<()> {
             .service(versioninfoapi)
             .service(component)
             .service(componentinfoapi)
+            .service(namedchannelsapi)
             .service(Files::new("/static", "./static")) // No need to enable listing
     })
     .bind(("0.0.0.0", 8080))?
