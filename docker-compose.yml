@@ -1,0 +1,34 @@
+version: '3.9'
+
+services:
+  rust-info:
+    image: rust-version-info-server:latest
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - ./rust_versions.sqlite3:app/rust_versions.sqlite3:ro
+    networks:
+      - traefik-network
+    deploy:
+      labels:
+        # Enable Traefik for this docker service
+        - "traefik.enable=true"
+        # Redirect HTTP -> HTTPS with a middleware
+        - "traefik.http.routers.rust-info-http.rule=Host(`rust-info.gentoo.zip`)"
+        - "traefik.http.routers.rust-info-http.entrypoints=web"
+        - "traefik.http.routers.rust-info-http.middlewares=redirect-https@file"
+        - "traefik.http.routers.rust-info-http.service=rust-info"
+        # Define our HTTPS configuration
+        - "traefik.http.routers.rust-info-https.rule=Host(`rust-info.gentoo.zip`)"
+        - "traefik.http.routers.rust-info-https.service=rust-info"
+        - "traefik.http.routers.rust-info-https.entrypoints=websecure"
+        - "traefik.http.routers.rust-info-https.tls=true"
+        - "traefik.http.routers.rust-info-https.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.rust-info-https.tls.domains[0].main=gentoo.zip"
+        - "traefik.http.routers.rust-info-https.tls.domains[0].sans=*.gentoo.zip"
+        # Define the Traefik service for this docker container
+        - "traefik.http.services.rust-info.loadbalancer.server.port=8080"
+
+networks:
+  traefik-network:
+    external: true

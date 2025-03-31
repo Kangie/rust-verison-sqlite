@@ -108,7 +108,7 @@ pub async fn componentinfoapi(
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let tera = Data::new(Tera::new("./templates/*").unwrap());
 
     let manager = r2d2_sqlite::SqliteConnectionManager::file("rust_versions.sqlite3");
