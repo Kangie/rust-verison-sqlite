@@ -526,7 +526,7 @@ def insert_rust_version(db_connection: sqlite3.Connection, rust: "RustVersion"):
 
     # 5. Update Profile Flags (if applicable) - Requires semver, ensure installed
     if rust.profiles:  # Check if profile data exists
-        if semver.compare(rust.version.split('-')[0], "1.32.0") >= 0:
+        if semver.compare(rust.version.split("-")[0], "1.32.0") >= 0:
             log.info(f"Updating profile flags for Rust {rust.version}")
             for profile, components_in_profile in rust.profiles.items():
                 if components_in_profile:  # Ensure list is not empty
@@ -550,12 +550,16 @@ def insert_rust_version(db_connection: sqlite3.Connection, rust: "RustVersion"):
                         UPDATE components SET {profile_col} = 1
                         WHERE rust_version = ? AND name IN ({placeholders});
                     """
-                    profile_update_values = (rust.version,) + tuple(components_in_profile)
+                    profile_update_values = (rust.version,) + tuple(
+                        components_in_profile
+                    )
                     execute_write_query(
                         db_connection, profile_update_query, profile_update_values
                     )
         else:
-            log.debug(f"Skipping profile flags for Rust {rust.version} (older than 1.32.0)")
+            log.debug(
+                f"Skipping profile flags for Rust {rust.version} (older than 1.32.0)"
+            )
 
 
 # --- Read Functions ---

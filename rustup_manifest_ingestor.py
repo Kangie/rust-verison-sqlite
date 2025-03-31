@@ -149,7 +149,11 @@ def filter_and_sort_manifests(
     for path in reversed(manifest_paths):
         if any(
             channel in path
-            for channel in ["channel-rust-nightly.toml", "channel-rust-beta.toml", "channel-rust-stable.toml"]
+            for channel in [
+                "channel-rust-nightly.toml",
+                "channel-rust-beta.toml",
+                "channel-rust-stable.toml",
+            ]
         ):
             continue
 
@@ -371,8 +375,8 @@ def set_rust_channel_flags(
             )
 
     # TODO: We should be able to just parse the nightly object but need to match
-    #static.rust-lang.org/dist/2025-03-29/channel-rust-nightly.toml
-    #{'dist/2025-03-29/channel-rust-nightly.toml': RustVersion(version='1.87.0-nightly',
+    # static.rust-lang.org/dist/2025-03-29/channel-rust-nightly.toml
+    # {'dist/2025-03-29/channel-rust-nightly.toml': RustVersion(version='1.87.0-nightly',
 
     if nightly_manifest_path:
         log.info("Parsing nightly channel manifest.", path=nightly_manifest_path)
@@ -382,7 +386,7 @@ def set_rust_channel_flags(
         else:
             log.warning(
                 "Failed to parse beta channel manifest.", path=nightly_manifest_path
-        )
+            )
 
     log.info(
         "Setting channel flags in database",
