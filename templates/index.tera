@@ -36,6 +36,9 @@
                 <p>Latest Nightly: <a href=/info/{{ channel.version }}>{{ channel.version }}</a> ({{ channel.release_date }})</p>
             {% endif %}
         {% endfor %}
+
+        <h2>API</h2>
+        <p>View the <a href="/swagger-ui/">API documentation</a>.</p>
     </div>
 
 </body>
