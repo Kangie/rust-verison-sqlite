@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {# Use status_code and reason passed from the handler #}
+    <title>{{ status_code }} - {{ reason }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="content">
+        <h1>{{ status_code }} - {{ reason }}</h1>
+
+        {# You can add messages based on the status code #}
+        {% if status_code == 404 %}
+            <p>Sorry, the resource you were looking for could not be found.</p>
+            <p>Requested path: <code>{{ path | escape }}</code></p>
+        {% elif status_code == 400 %}
+            <p>There was a problem with your request (Bad Request).</p>
+        {% elif status_code == 405 %}
+            <p>The method used is not allowed for this resource.</p>
+        {% elif status_code == 501 %}
+            <p>The server does not support the functionality required to fulfill the request (Not Implemented).</p>
+        {% elif status_code == 503 %}
+            <p>The server is currently unable to handle the request due to temporary overloading or maintenance (Service Unavailable).</p>
+        {% elif status_code >= 500 %}
+            <p>Sorry, something went wrong on our end (Internal Server Error). Please try again later.</p>
+        {% else %}
+            <p>An unexpected error occurred.</p> {# Generic fallback #}
+        {% endif %}
+
+        <p><a href="/">Return to Homepage</a></p>
+
+        {# Display the error message if available #}
+        {% if error_message %} <pre style="background-color: #eee; padding: 10px;">{{ error_message }}</pre> {% endif %}
+    </div>
+</body>
+</html>
