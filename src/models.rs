@@ -1,6 +1,7 @@
+use oasgen::OaSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, OaSchema, Clone, Copy)]
 pub enum ArtefactType {
     InstallerMSI = 1,
     InstallerPkg = 2,
@@ -26,21 +27,21 @@ impl From<ArtefactType> for i32 {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, OaSchema)]
 pub struct Artefact {
     pub artefact_type: ArtefactType,
     pub url: String,
     pub hash: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, OaSchema)]
 pub struct ComponentTarget {
     pub name: String,
     pub url: String,
     pub hash: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, OaSchema)]
 pub struct Component {
     pub name: String,
     pub version: String,
@@ -51,7 +52,7 @@ pub struct Component {
     pub profile_minimal: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, OaSchema)]
 pub struct RustVersion {
     pub version: String,
     pub release_date: String,
@@ -60,7 +61,8 @@ pub struct RustVersion {
     pub latest_beta: bool,
     pub latest_nightly: bool,
     pub components: Vec<Component>,
-    pub profiles: Option<std::collections::HashMap<String, Vec<String>>>,
+    pub profiles: Option<Vec<String>>,
+    // #[oasgen(skip)] // Skip complex types if they cause issues
     pub renames: Option<std::collections::HashMap<String, String>>,
     pub artefacts: Option<Vec<Artefact>>,
 }

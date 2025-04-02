@@ -1,17 +1,21 @@
+
 use actix_files::Files;
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, middleware, web, web::Data};
 use env_logger::Env;
+use oasgen::{Server, oasgen};
 use tera::{Context, Tera};
 
 mod db;
 use db::{ComponentQueries, Pool, VersionQueries};
 
 pub mod models;
+use models::{Component, RustVersion};
+
+// --- HTML Rendering Handlers ---
 
 #[get("/")]
 pub async fn hello(tera: Data<Tera>, db: web::Data<Pool>) -> impl Responder {
     let mut ctx = Context::new();
-
     let versions = db::execute_versions(&db, VersionQueries::GetAllVersions, None)
         .await
         .unwrap();
@@ -20,7 +24,6 @@ pub async fn hello(tera: Data<Tera>, db: web::Data<Pool>) -> impl Responder {
         .await
         .unwrap();
     ctx.insert("named_channels", &named_channels);
-
     HttpResponse::Ok().body(tera.render("index.tera", &ctx).unwrap())
 }
 
@@ -31,7 +34,6 @@ pub async fn versioninfo(
     db: web::Data<Pool>,
 ) -> impl Responder {
     let mut ctx = Context::new();
-
     let rustversion =
         db::execute_versions(&db, VersionQueries::GetVersionInfo, Some(path.to_string()))
             .await
@@ -40,14 +42,12 @@ pub async fn versioninfo(
             .next()
             .unwrap();
     ctx.insert("version", &rustversion);
-
     HttpResponse::Ok().body(tera.render("versioninfo.tera", &ctx).unwrap())
 }
 
 #[get("/info/all")]
 pub async fn allversions(tera: Data<Tera>, db: web::Data<Pool>) -> impl Responder {
     let mut ctx = Context::new();
-
     let versions = db::execute_versions(&db, VersionQueries::GetAllVersions, None)
         .await
         .unwrap();
@@ -62,7 +62,6 @@ pub async fn component(
     db: web::Data<Pool>,
 ) -> impl Responder {
     let mut ctx = Context::new();
-
     let component = db::execute_components(
         &db,
         ComponentQueries::GetRustComponent,
@@ -73,45 +72,42 @@ pub async fn component(
     .unwrap();
     ctx.insert("rustversion", &path.1.to_string());
     ctx.insert("component", &component);
-
     HttpResponse::Ok().body(tera.render("component.tera", &ctx).unwrap())
 }
 
-#[get("api/v1/version/{version}")]
-pub async fn versioninfoapi(path: web::Path<String>, db: web::Data<Pool>) -> impl Responder {
-    let rustversion =
-        db::execute_versions(&db, VersionQueries::GetVersionInfo, Some(path.to_string()))
-            .await
-            .unwrap()
-            .into_iter()
-            .next()
-            .unwrap();
-    HttpResponse::Ok().json(rustversion)
+// --- API Handlers ---
+
+#[oasgen]
+pub async fn versioninfoapi(
+    path: web::Path<String>,
+    db: web::Data<Pool>,
+) -> Result<web::Json<RustVersion>, Box<dyn std::error::Error>> {
+    let version_str = path.into_inner();
+    let rustversion = db::execute_versions(&db, VersionQueries::GetVersionInfo, Some(version_str))
+        .await?
+        .into_iter()
+        .next()
+        .ok_or_else(|| format!("Version not found"))?;
+    Ok(web::Json(rustversion))
 }
 
-#[get("/api/v1/component/{name}/{version}")]
+#[oasgen]
 pub async fn componentinfoapi(
     path: web::Path<(String, String)>,
     db: web::Data<Pool>,
-) -> impl Responder {
-    let rust_component = db::execute_components(
-        &db,
-        ComponentQueries::GetRustComponent,
-        path.0.to_string(),
-        path.1.to_string(),
-    )
-    .await
-    .unwrap();
-
-    HttpResponse::Ok().json(rust_component)
+) -> Result<web::Json<Vec<Component>>, Box<dyn std::error::Error>> {
+    let (name, version) = path.into_inner();
+    let rust_component =
+        db::execute_components(&db, ComponentQueries::GetRustComponent, name, version).await?;
+    Ok(web::Json(vec![rust_component]))
 }
 
-#[get("/api/v1/named_channels")]
-pub async fn namedchannelsapi(db: web::Data<Pool>) -> impl Responder {
-    let named_channels = db::execute_versions(&db, VersionQueries::GetNamedChannels, None)
-        .await
-        .unwrap();
-    HttpResponse::Ok().json(named_channels)
+#[oasgen]
+pub async fn namedchannelsapi(
+    db: web::Data<Pool>,
+) -> Result<web::Json<Vec<RustVersion>>, Box<dyn std::error::Error>> {
+    let named_channels = db::execute_versions(&db, VersionQueries::GetNamedChannels, None).await?;
+    Ok(web::Json(named_channels))
 }
 
 #[actix_web::main]
@@ -121,20 +117,29 @@ async fn main() -> std::io::Result<()> {
 
     let manager = r2d2_sqlite::SqliteConnectionManager::file("rust_versions.sqlite3");
     let pool = r2d2::Pool::new(manager).unwrap();
+    let pool_data = web::Data::new(pool.clone());
+
+    let oasgen_server = Server::actix() // Use default Server builder
+        .get("/api/v1/version/{version}", versioninfoapi)
+        .get("/api/v1/component/{name}/{version}", componentinfoapi)
+        .get("/api/v1/named_channels", namedchannelsapi)
+        .route_json_spec("/openapi.json")
+        .swagger_ui("/swagger-ui/") // Must have a trailing slash
+        .freeze();
 
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(pool.clone()))
-            .wrap(middleware::Logger::new("%a %{User-Agent}i"))
+            .app_data(pool_data.clone())
             .app_data(tera.clone())
+            .wrap(middleware::Logger::new("%a %{User-Agent}i"))
+            // Mount non-API routes
             .service(hello)
             .service(versioninfo)
             .service(allversions)
-            .service(versioninfoapi)
             .service(component)
-            .service(componentinfoapi)
-            .service(namedchannelsapi)
-            .service(Files::new("/static", "./static")) // No need to enable listing
+            .service(Files::new("/static", "./static"))
+            // Mount oasgen managed services
+            .service(oasgen_server.clone().into_service())
     })
     .bind(("0.0.0.0", 8080))?
     .run()
